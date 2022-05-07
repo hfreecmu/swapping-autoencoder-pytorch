@@ -13,7 +13,36 @@ import importlib
 import argparse
 from argparse import Namespace
 from sklearn.decomposition import PCA as PCA
+import pickle
+import cv2
+import json
 
+def read_file(dict_path):
+    with open(dict_path, 'rb') as f:
+        dictionary = pickle.load(f)
+
+    return dictionary
+
+def write_file(path, dictionary):
+    with open(path, 'wb') as f:
+        pickle.dump(dictionary, f)
+
+def write_json(path, dictionary):
+    json.dump(dictionary, open(path,'w'))
+
+def jpg_to_png(input_dir):
+    if not os.path.exists(input_dir):
+        raise RuntimeError('Illegal input dir')
+    
+    for filename in os.listdir(input_dir):
+        if not filename.endswith('.jpg'):
+            continue
+
+        file_path = os.path.join(input_dir, filename)
+        image = cv2.imread(file_path)
+        dest_path = file_path.replace('.jpg', '.png')
+        cv2.imwrite(dest_path, image)
+        os.remove(file_path)
 
 def normalize(v):
     if type(v) == list:

@@ -56,8 +56,10 @@ class Launcher(TmuxLauncher):
                 load_size=512,
                 evaluation_metrics="simple_swapping",
                 # Specify the two images here.
-                input_structure_image="./testphotos/mountain/fig12/structure/AdobeStock_104191871.jpeg",
-                input_texture_image="./testphotos/mountain/fig12/style/AdobeStock_312564332.jpeg",
+                #input_structure_image="./testphotos/mountain/fig12/structure/AdobeStock_104191871.jpeg",
+                #input_texture_image="./testphotos/mountain/fig12/style/AdobeStock_312564332.jpeg",
+                input_structure_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/dep/photos_mini/forest/forest_mix/000000.jpg',
+                input_texture_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/dep/photos_mini/mountains/winter_mountains/000002.jpg',
                 # alpha == 1.0 corresponds to full swapping.
                 # 0 < alpha < 1 means interpolation
                 texture_mix_alpha=1.0,
@@ -73,8 +75,53 @@ class Launcher(TmuxLauncher):
                 load_size=512,
                 evaluation_metrics="simple_swapping",
                 # Specify the two images here.
-                input_structure_image="./testphotos/mountain/fig12/structure/AdobeStock_104191871.jpeg",
-                input_texture_image="./testphotos/mountain/fig12/style/AdobeStock_312564332.jpeg",
+                #input_structure_image="./testphotos/mountain/fig12/structure/AdobeStock_104191871.jpeg",
+                #input_texture_image="./testphotos/mountain/fig12/style/AdobeStock_312564332.jpeg",
+                input_structure_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/dep/photos_mini/forest/forest_mix/000000.jpg',
+                input_texture_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/dep/photos_mini/mountains/winter_mountains/000002.jpg',
                 texture_mix_alpha='0.0 0.25 0.5 0.75 1.0',
+            ),
+
+            # Extract all latent codes from directory
+            opt.tag("extract_textures").specify(
+                num_gpus=1,
+                batch_size=1,
+                dataroot=".",  # dataroot is ignored.
+                result_dir="./results/",
+                preprocess="scale_shortside",
+                load_size=128,
+                evaluation_metrics="texture_extract",
+                method='save',
+                latent_type='snow',
+                input_dir='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/photos/snow',
+            ),
+
+            # Extract all latent codes from multiple directories
+            opt.tag("extract_all_textures").specify(
+                num_gpus=1,
+                batch_size=1,
+                dataroot=".",  # dataroot is ignored.
+                result_dir="./results/",
+                preprocess="scale_shortside",
+                load_size=128,
+                evaluation_metrics="texture_extract",
+                method='save_all',
+                input_dir='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/photos/latent_textures',
+            ),
+
+            # Extract all latent codes from directory
+            opt.tag("texture_mix").specify(
+                num_gpus=1,
+                batch_size=1,
+                dataroot=".",  # dataroot is ignored.
+                result_dir="./results/",
+                preprocess="scale_shortside",
+                load_size=128,
+                evaluation_metrics="texture_extract",
+                method='interpolate',
+                latent_type='snow',
+                input_structure_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/images_cv/data/train/forest/0D2CHVV17YEZ.jpg',
+                texture_mix_alpha=1.0,
+                latent_mix_alpha='0.0 0.25 0.5 0.75 1.0',
             )
         ]
