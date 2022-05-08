@@ -1,9 +1,3 @@
-#dirs
-checkpoints/
-results/
-testphotos/
-datasets/
-
 # result files
 *.png
 *.txt
@@ -143,3 +137,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# dirs
+checkpoints/
+results/
+testphotos/
+datasets/
+
+#flickr_creds
+scripts/flickr_jsons/*.json
+*_creds.json
+!scripts/flickr_jsons/info.txt

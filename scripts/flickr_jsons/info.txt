@@ -1,0 +1,4 @@
+Directory where flickr credentials should be saved.
+These files SHOULD NOT BE GIT COMMITED AND PUSHED.
+
+use save_flickr_creds method in load_flickr.py to save credential file
