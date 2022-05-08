@@ -57,7 +57,6 @@ def train(label_path, checkpoint_dir, lr, num_epochs, batch_size, checkpont_save
     label_dict = util.read_file(label_path)
     img_size = label_dict['img_size']
     num_classes = label_dict['num_classes']
-    label_map = label_dict['label_map']
 
     model = build_model(num_classes)
     dataloader = get_data_loader(label_dict['labels'], True, image_size=img_size, batch_size=batch_size)

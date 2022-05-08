@@ -103,10 +103,11 @@ class Launcher(TmuxLauncher):
                 dataroot=".",  # dataroot is ignored.
                 result_dir="./results/",
                 preprocess="scale_shortside",
+                #preprocess="resize",
                 load_size=512,
                 evaluation_metrics="texture_extract",
                 method='save_all',
-                input_dir='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/photos/latent_textures',
+                input_dir='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/latent_textures',
             ),
 
             # Extract all latent codes from directory

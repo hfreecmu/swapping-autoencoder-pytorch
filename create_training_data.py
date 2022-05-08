@@ -12,13 +12,13 @@ from options import TestOptions
 import models
 from data.base_dataset import get_transform
 
-type_choices = ["flickr"]
+method_choices = ["build_flickr", "extract_latent"]
 
 def parse_args():
     """Parse input arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', required=True)
-    parser.add_argument('--type', required=True, choices=type_choices)
+    parser.add_argument('--method', required=True, choices=method_choices)
 
     args = parser.parse_args()
     return args
@@ -80,7 +80,7 @@ def validate_classes(classes, num_classes):
 
     return label_map
 
-def parse_and_validate_gan_details(config, label_map):
+def parse_and_validate_gan_details(config, label_map, for_extract):
     gan_augment = config['gan_augment']
 
     if not gan_augment:
@@ -99,10 +99,11 @@ def parse_and_validate_gan_details(config, label_map):
         #TODO fix this, just checking key is there
         num_augment = gan_details['class_augment_details'][class_name]["num_augment"]
 
-        for texture in textures:
-            latent_path = os.path.join(gan_details['extracted_latent_code_dir'], texture, 'latent_codes.pth')
-            if not os.path.exists(latent_path):
-                raise RuntimeError('Latent code path does not exists: ' + latent_path)
+        if not for_extract:
+            for texture in textures:
+                latent_path = os.path.join(gan_details['extracted_latent_code_dir'], texture, 'latent_codes.pth')
+                if not os.path.exists(latent_path):
+                    raise RuntimeError('Latent code path does not exists: ' + latent_path)
 
     return gan_augment, gan_details
 
@@ -119,6 +120,80 @@ def get_filenames(input_dir, sub_dirs):
 
     return filenames
 
+def get_opt_and_model():
+    opt = TestOptions().parse(name_req=False)
+    #opt.preprocess = "scale_shortside"
+    opt.preprocess = "resize"
+    opt.load_size = 512
+    opt.crop_size = 512
+    opt.name = 'mountain_pretrained'
+    opt.dataset_mode = "imagefolder"
+    opt.lambda_patch_R1=10.0
+    #just for debug
+    # opt.evaluation_metrics="texture_extract"
+    # opt.result_dir='./results/'
+    # opt.texture_mix_alphas=[1.0]
+    # opt.method='save_all'
+    # opt.latent_mix_alphas=[1.0]
+    # opt.latent_type=None
+    # opt.input_dir='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/latent_textures'
+    # opt.input_structure_image=None
+    model = models.create_model(opt)
+
+    return opt, model
+
+def extract_latent_codes(config_file):
+    config = util.read_yaml(config_file)
+    classes = config["classes"]
+    num_classes = config["num_classes"]
+
+    label_map = validate_classes(classes, num_classes)
+    gan_augment, gan_details = parse_and_validate_gan_details(config, label_map, True)
+    
+    if not gan_augment:
+        print('do not need to extract latent_codes if gan_augment is False')
+        return
+
+    latent_input_dir = gan_details['latent_input_dir']
+    extracted_latent_code_dir = gan_details['extracted_latent_code_dir']
+
+    if not os.path.exists(latent_input_dir):
+        raise RuntimeError('Invalid latent input dir')
+
+    opt, model = get_opt_and_model()
+
+    for dirname in os.listdir(latent_input_dir):
+        subdir = os.path.join(latent_input_dir, dirname)
+        if not os.path.isdir(subdir):
+            continue
+
+        latent_type = dirname
+        output_dir = os.path.join(extracted_latent_code_dir, latent_type)
+        os.makedirs(output_dir, exist_ok=True)
+
+        latent_codes = []
+        for filename in os.listdir(subdir):
+            if not filename.endswith('.png'):
+                continue
+
+            image_path = os.path.join(subdir, filename)
+
+            print('Processing: ' + image_path)
+            image = load_image(opt, image_path)
+        
+            #TODO do I need to do this once or every time?
+            # Actually do I need this at all?
+            model(sample_image=image, command="fix_noise")
+
+            _, texture_code = model(image, command="encode")
+
+            latent_codes.append(texture_code)
+
+        latent_codes = torch.cat(latent_codes, dim=0)
+        
+        torch.save(latent_codes, os.path.join(output_dir, 'latent_codes.pth'))
+
+
 def create_flickr_data(config_file):
     config = util.read_yaml(config_file)
 
@@ -134,15 +209,10 @@ def create_flickr_data(config_file):
 
     train_split = parse_train_test_split(train_test_split)
     label_map = validate_classes(classes, num_classes)
-    gan_augment, gan_details = parse_and_validate_gan_details(config, label_map)
+    gan_augment, gan_details = parse_and_validate_gan_details(config, label_map, False)
 
     if gan_augment:
-        opt = TestOptions().parse(name_req=False)
-        #change default preprocess and load_size
-        opt.preprocess = "resize"
-        opt.load_size = 512
-        opt.name = 'mountain_pretrained'
-        model = models.create_model(opt)
+        opt, model = get_opt_and_model()
 
     train_dir = os.path.join(output_dir, 'train')
     test_dir = os.path.join(output_dir, "test")
@@ -183,7 +253,7 @@ def create_flickr_data(config_file):
             #only augment training
             if (i in train_inds) and (gan_augment) and (gan_details['class_augment_details'].get(class_name) is not None):
                 structure_image = load_image(opt, dest_path)
-                structure_code, _ = model(structure_image, command="encode")
+                structure_code, structure_texture = model(structure_image, command="encode")
 
                 textures = gan_details['class_augment_details'][class_name]["textures"]
                 num_augment = gan_details['class_augment_details'][class_name]["num_augment"]
@@ -196,6 +266,9 @@ def create_flickr_data(config_file):
 
                     for augment_num in range(num_augment):
                         texture_code = texture_codes[rand_inds[augment_num]:rand_inds[augment_num]+1]
+
+                        texture_code = util.lerp(structure_texture, texture_code, gan_details['texture_alpha'])
+
                         print('Augmenting ' + os.path.basename(dest_path) + ' num ' + str(augment_num))
                         augmented_image = model(structure_code, texture_code, command="decode")
                         augmented_image = transforms.ToPILImage()((augmented_image[0].clamp(-1.0, 1.0) + 1.0) * 0.5)
@@ -219,13 +292,40 @@ if __name__ == "__main__":
     args = parse_args()
 
     config_file = args.config_file
-    type = args.type
+    method = args.method
 
     if not os.path.exists(config_file):
         raise RuntimeError('Invalid config file')
 
-    if type == "flickr":
+    if method == "build_flickr":
+        #build_flickr requires that data to be in format
+        #input_dir
+            # class_0
+                # image_0
+                # image_1
+                # ...
+            # class_2
+                # image_0
+                # image_1
+                # ...
+            # ...
+
+        torch.set_grad_enabled(False)
         create_flickr_data(config_file)
+    elif method == "extract_latent":
+        #extract_latent requires that data to be in format
+        #latent_input_dir
+            # texture_0
+                # image_0
+                # image_1
+                # ...
+            # texture_2
+                # image_0
+                # image_1
+                # ...
+            # ...
+        torch.set_grad_enabled(False)
+        extract_latent_codes(config_file)
     else:
-        raise RuntimeError("Illegal type found: " + type)
+        raise RuntimeError("Illegal method found: " + method)
 

@@ -36,12 +36,13 @@ def jpg_to_png(input_dir):
         raise RuntimeError('Illegal input dir')
     
     for filename in os.listdir(input_dir):
-        if not filename.endswith('.jpg'):
+        if not (filename.endswith('.jpg') or filename.endswith('.jpeg')):
             continue
 
         file_path = os.path.join(input_dir, filename)
         image = cv2.imread(file_path)
         dest_path = file_path.replace('.jpg', '.png')
+        dest_path = file_path.replace('.jpeg', '.png')
         cv2.imwrite(dest_path, image)
         os.remove(file_path)
 
