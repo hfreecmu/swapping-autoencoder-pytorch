@@ -1,11 +1,16 @@
 import argparse
 from asyncore import write
 import os
-import yaml
 import numpy as np
 import shutil
+from PIL import Image
+import torch
+import torchvision.transforms as transforms
 
 import util
+from options import TestOptions
+import models
+from data.base_dataset import get_transform
 
 type_choices = ["flickr"]
 
@@ -17,6 +22,13 @@ def parse_args():
 
     args = parser.parse_args()
     return args
+
+def load_image(opt, path):
+    path = os.path.expanduser(path)
+    img = Image.open(path).convert('RGB')
+    transform = get_transform(opt)
+    tensor = transform(img).unsqueeze(0)
+    return tensor
 
 def parse_train_test_split(train_test_split):
     splits = train_test_split.split(":")
@@ -32,6 +44,8 @@ def validate_classes(classes, num_classes):
     found_labels = set()
     found_classes = set()
     found_subdirs = set()
+
+    label_map = dict()
 
     if num_classes != len(classes):
         raise RuntimeError("Num classes does not match")
@@ -58,9 +72,39 @@ def validate_classes(classes, num_classes):
         found_labels.add(label)
         found_classes.add(class_name)
 
+        label_map[label] = class_name
+
     assert len(found_labels) == num_classes
     for i in range(num_classes):
         assert i in found_labels
+
+    return label_map
+
+def parse_and_validate_gan_details(config, label_map):
+    gan_augment = config['gan_augment']
+
+    if not gan_augment:
+        return gan_augment, {}
+    
+    if config.get("gan_details") is None:
+        raise RuntimeError('gan_details required in config when gan_augment is True')
+
+    gan_details = config["gan_details"]
+
+    for class_name in gan_details['class_augment_details']:
+        if class_name not in label_map.values():
+            raise RuntimeError('Illegal class_name found in gan_details: ' + class_name)
+
+        textures = gan_details['class_augment_details'][class_name]["textures"]
+        #TODO fix this, just checking key is there
+        num_augment = gan_details['class_augment_details'][class_name]["num_augment"]
+
+        for texture in textures:
+            latent_path = os.path.join(gan_details['extracted_latent_code_dir'], texture, 'latent_codes.pth')
+            if not os.path.exists(latent_path):
+                raise RuntimeError('Latent code path does not exists: ' + latent_path)
+
+    return gan_augment, gan_details
 
 def get_filenames(input_dir, sub_dirs):
     filenames = []
@@ -76,8 +120,7 @@ def get_filenames(input_dir, sub_dirs):
     return filenames
 
 def create_flickr_data(config_file):
-    with open(config_file) as f:
-        config = yaml.safe_load(f)
+    config = util.read_yaml(config_file)
 
     input_dir = config["input_dir"]
     output_dir = config["output_dir"]
@@ -90,7 +133,16 @@ def create_flickr_data(config_file):
         raise RuntimeError("input dir does not exists")
 
     train_split = parse_train_test_split(train_test_split)
-    validate_classes(classes, num_classes)
+    label_map = validate_classes(classes, num_classes)
+    gan_augment, gan_details = parse_and_validate_gan_details(config, label_map)
+
+    if gan_augment:
+        opt = TestOptions().parse(name_req=False)
+        #change default preprocess and load_size
+        opt.preprocess = "resize"
+        opt.load_size = 512
+        opt.name = 'mountain_pretrained'
+        model = models.create_model(opt)
 
     train_dir = os.path.join(output_dir, 'train')
     test_dir = os.path.join(output_dir, "test")
@@ -101,14 +153,13 @@ def create_flickr_data(config_file):
     train_labels = []
     test_labels = []
 
-    label_map = dict()
+    train_count = 0
+    augment_count = 0
 
     for c in classes:
         label = c["label"]
         class_name = c["class_name"]
         class_dirs = c["class_dirs"]
-
-        label_map[label] = class_name
 
         class_files = get_filenames(input_dir, class_dirs)
 
@@ -119,6 +170,7 @@ def create_flickr_data(config_file):
             if i in train_inds:
                 dest_dir = train_dir
                 dest_labels = train_labels
+                train_count += 1
             else:
                 dest_dir = test_dir
                 dest_labels = test_labels
@@ -127,6 +179,35 @@ def create_flickr_data(config_file):
             shutil.copyfile(class_files[i], dest_path)
 
             dest_labels.append([dest_path, label])
+
+            #only augment training
+            if (i in train_inds) and (gan_augment) and (gan_details['class_augment_details'].get(class_name) is not None):
+                structure_image = load_image(opt, dest_path)
+                structure_code, _ = model(structure_image, command="encode")
+
+                textures = gan_details['class_augment_details'][class_name]["textures"]
+                num_augment = gan_details['class_augment_details'][class_name]["num_augment"]
+
+                for texture in textures:
+                    latent_path = os.path.join(gan_details['extracted_latent_code_dir'], texture, 'latent_codes.pth')
+                    texture_codes = torch.load(latent_path)
+
+                    rand_inds = np.random.choice(texture_codes.shape[0], size=(num_augment), replace=False)
+
+                    for augment_num in range(num_augment):
+                        texture_code = texture_codes[rand_inds[augment_num]:rand_inds[augment_num]+1]
+                        print('Augmenting ' + os.path.basename(dest_path) + ' num ' + str(augment_num))
+                        augmented_image = model(structure_code, texture_code, command="decode")
+                        augmented_image = transforms.ToPILImage()((augmented_image[0].clamp(-1.0, 1.0) + 1.0) * 0.5)
+
+                        augment_dest_path = os.path.join(dest_dir, os.path.basename(dest_path).split('.png')[0] + '_' + texture + '_' + str(augment_num) + '.png')
+                        augmented_image.save(augment_dest_path)
+
+                        assert dest_labels != test_labels
+                        dest_labels.append([augment_dest_path, label])
+                        augment_count += 1
+
+    assert train_count + augment_count == len(train_labels)
 
     train_label_file = os.path.join(output_dir, 'train_labels.pkl')
     test_label_file = os.path.join(output_dir, 'test_labels.pkl')

@@ -16,6 +16,7 @@ from sklearn.decomposition import PCA as PCA
 import pickle
 import cv2
 import json
+import yaml
 
 def read_file(dict_path):
     with open(dict_path, 'rb') as f:
@@ -43,6 +44,12 @@ def jpg_to_png(input_dir):
         dest_path = file_path.replace('.jpg', '.png')
         cv2.imwrite(dest_path, image)
         os.remove(file_path)
+
+def read_yaml(config_file):
+    with open(config_file) as f:
+        config = yaml.safe_load(f)
+
+    return config
 
 def normalize(v):
     if type(v) == list:

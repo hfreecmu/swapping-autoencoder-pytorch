@@ -82,6 +82,7 @@ class TextureExtractEvaluator(BaseEvaluator):
             image = self.load_image(image_path)
         
             #TODO do I need to do this once or every time?
+            # Actually do I need this at all?
             model(sample_image=image, command="fix_noise")
 
             _, texture_code = model(image, command="encode")
@@ -103,6 +104,7 @@ class TextureExtractEvaluator(BaseEvaluator):
         latent_codes = torch.load(os.path.join(latent_dir, 'latent_codes.pth'))
 
         inds = np.random.choice(latent_codes.shape[0], size=(2), replace=False)
+        #inds = [10,23]
         ind_0 = inds[0]
         ind_1 = inds[1]
 

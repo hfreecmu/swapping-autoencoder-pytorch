@@ -4,11 +4,10 @@ import PIL.Image as Image
 
 class ClassifierDataSet(Dataset):
     """Load images under folders"""
-    def __init__(self, labels, transform, gan_augment, return_path):
+    def __init__(self, labels, transform, return_path):
         self.transform = transform
         self.labels = labels
         self.return_path = return_path
-        self.gan_augment = gan_augment
 
     def __len__(self):
         return len(self.labels)
@@ -23,7 +22,7 @@ class ClassifierDataSet(Dataset):
         else:
             return tensor_image, img_loc[1], img_loc[0]
 
-def get_data_loader(labels, is_train, image_size=224, batch_size=16, gan_augment=False, return_path=False):
+def get_data_loader(labels, is_train, image_size=224, batch_size=16, return_path=False):
     #TODO do I want to add random cropping?
     if is_train:
         transform = transforms.Compose([
@@ -41,7 +40,7 @@ def get_data_loader(labels, is_train, image_size=224, batch_size=16, gan_augment
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ])
 
-    dataset = ClassifierDataSet(labels, transform, gan_augment=gan_augment, return_path=return_path)
+    dataset = ClassifierDataSet(labels, transform, return_path=return_path)
     
     dloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=is_train)
 

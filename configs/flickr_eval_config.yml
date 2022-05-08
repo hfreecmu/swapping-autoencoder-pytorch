@@ -1,5 +1,6 @@
 input_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/structures/evaluation"
 output_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/flickr_data_eval"
+gan_augment: False
 train_test_split: "0:100"
 img_size: 224
 num_classes: 5

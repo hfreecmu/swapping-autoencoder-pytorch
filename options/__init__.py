@@ -15,9 +15,13 @@ from util import Visualizer
 
 
 class BaseOptions():
-    def initialize(self, parser):
+    def initialize(self, parser, name_req=True):
         # experiment specifics
-        parser.add_argument('--name', type=str, required=True, help='name of the experiment. It decides where to store samples and models')
+        if name_req:
+            parser.add_argument('--name', type=str, required=True, help='name of the experiment. It decides where to store samples and models')
+        else:
+            parser.add_argument('--name', type=str, default="dummy", help='name of the experiment. It decides where to store samples and models')
+
         parser.add_argument('--easy_label', type=str, default="")
 
         parser.add_argument('--num_gpus', type=int, default=1, help='#GPUs to use. 0 means CPU mode')
@@ -52,12 +56,12 @@ class BaseOptions():
 
         return parser
 
-    def gather_options(self, command=None):
+    def gather_options(self, command=None, name_req=True):
         parser = AugmentedArgumentParser()
         parser.custom_command = command
 
         # get basic options
-        parser = self.initialize(parser)
+        parser = self.initialize(parser, name_req=name_req)
 
         # get the basic options
         opt, unknown = parser.parse_known_args()
@@ -92,7 +96,11 @@ class BaseOptions():
 
         opt, unknown = parser.parse_known_args()
 
-        opt = parser.parse_args()
+        if name_req:
+            opt = parser.parse_args()
+        else:
+            opt, _ = parser.parse_known_args()
+
         self.parser = parser
         return opt
 
@@ -133,8 +141,8 @@ class BaseOptions():
         with open(file_name + '.pkl', 'wb') as opt_file:
             pickle.dump(opt, opt_file)
 
-    def parse(self, save=False, command=None):
-        opt = self.gather_options(command)
+    def parse(self, save=False, command=None, name_req=True):
+        opt = self.gather_options(command, name_req=name_req)
         opt.isTrain = self.isTrain   # train or test
         self.print_options(opt)
         if opt.isTrain:
@@ -152,8 +160,8 @@ class TrainOptions(BaseOptions):
         super().__init__()
         self.isTrain = True
 
-    def initialize(self, parser):
-        super().initialize(parser)
+    def initialize(self, parser, name_req=True):
+        super().initialize(parser, name_req=name_req)
         parser.add_argument('--continue_train', type=util.str2bool, default=False, help="resume training from last checkpoint")
         parser.add_argument('--pretrained_name', type=str, default=None,
                             help="Load weights from the checkpoint of another experiment")
@@ -166,8 +174,8 @@ class TestOptions(BaseOptions):
         super().__init__()
         self.isTrain = False
 
-    def initialize(self, parser):
-        super().initialize(parser)
+    def initialize(self, parser, name_req=True):
+        super().initialize(parser, name_req=name_req)
         parser.add_argument("--result_dir", type=str, default="results")
         return parser
 

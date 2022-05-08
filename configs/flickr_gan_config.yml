@@ -1,6 +1,6 @@
 input_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/structures/regular_dataset"
-output_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/flickr_data_v0_tmp"
-gan_augment: False
+output_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/flickr_data_gan_v0"
+gan_augment: True
 train_test_split: "80:20"
 img_size: 224
 num_classes: 5
@@ -31,3 +31,9 @@ classes:
     class_name: "city"
     class_dirs:
       - "city"
+gan_details:
+  extracted_latent_code_dir: '/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/results/mountain_pretrained/textureextract_512'
+  class_augment_details:
+    forest: 
+      textures: ['snow']
+      num_augment: 1

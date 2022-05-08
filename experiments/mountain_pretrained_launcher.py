@@ -89,7 +89,7 @@ class Launcher(TmuxLauncher):
                 dataroot=".",  # dataroot is ignored.
                 result_dir="./results/",
                 preprocess="scale_shortside",
-                load_size=128,
+                load_size=512,
                 evaluation_metrics="texture_extract",
                 method='save',
                 latent_type='snow',
@@ -103,7 +103,7 @@ class Launcher(TmuxLauncher):
                 dataroot=".",  # dataroot is ignored.
                 result_dir="./results/",
                 preprocess="scale_shortside",
-                load_size=128,
+                load_size=512,
                 evaluation_metrics="texture_extract",
                 method='save_all',
                 input_dir='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/photos/latent_textures',
@@ -115,12 +115,13 @@ class Launcher(TmuxLauncher):
                 batch_size=1,
                 dataroot=".",  # dataroot is ignored.
                 result_dir="./results/",
-                preprocess="scale_shortside",
-                load_size=128,
+                #preprocess="scale_shortside",
+                preprocess="resize",
+                load_size=512,
                 evaluation_metrics="texture_extract",
                 method='interpolate',
                 latent_type='snow',
-                input_structure_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/images_cv/data/train/forest/0D2CHVV17YEZ.jpg',
+                input_structure_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/structures/regular_dataset/forest_trees/forest_trees_000004.png',
                 texture_mix_alpha=1.0,
                 latent_mix_alpha='0.0 0.25 0.5 0.75 1.0',
             )

@@ -1,3 +1,9 @@
+#dirs
+checkpoints/
+results/
+testphotos/
+datasets/
+
 # result files
 *.png
 *.txt
