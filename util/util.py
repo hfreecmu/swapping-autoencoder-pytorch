@@ -72,10 +72,23 @@ def jpg_to_png(input_dir):
 
         file_path = os.path.join(input_dir, filename)
         image = cv2.imread(file_path)
-        dest_path = file_path.replace('.jpg', '.png')
-        dest_path = file_path.replace('.jpeg', '.png')
+        if filename.endswith('.jpg'):
+            dest_path = file_path.replace('.jpg', '.png')
+        else:
+            dest_path = file_path.replace('.jpeg', '.png')
         cv2.imwrite(dest_path, image)
         os.remove(file_path)
+
+def jpg_to_png_recursive(input_dir):
+    if not os.path.exists(input_dir):
+        raise RuntimeError('Illegal input dir')
+
+    for dirname in os.listdir(input_dir):
+        subdir = os.path.join(input_dir, dirname)
+        if not os.path.isdir(subdir):
+            continue
+
+        jpg_to_png(subdir)
 
 def name_modify(input_dir, name):
     if not os.path.exists(input_dir):
@@ -94,6 +107,16 @@ def name_modify(input_dir, name):
         cv2.imwrite(dest_path, image)
         os.remove(file_path)
 
+def name_modify_recursive(input_dir):
+    if not os.path.exists(input_dir):
+        raise RuntimeError('Illegal input dir')
+
+    for dirname in os.listdir(input_dir):
+        subdir = os.path.join(input_dir, dirname)
+        if not os.path.isdir(subdir):
+            continue
+
+        name_modify(subdir, dirname)
 
 def read_yaml(config_file):
     with open(config_file) as f:
