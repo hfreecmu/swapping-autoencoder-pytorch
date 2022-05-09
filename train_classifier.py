@@ -4,10 +4,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.models as models
+import torchvision.transforms as transforms
 import shutil
+import numpy as np
 
 import util
-from data.classifier_data_loader import get_data_loader
+from data.classifier_data_loader import get_data_loader, get_test_transform
+from options import TestOptions
+
+from create_training_data import parse_and_validate_gan_details
 
 methods = ['train', 'infer']
 "TODO: move these all to config"
@@ -24,6 +29,9 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--results_dir', default=None)
     parser.add_argument('--visualize_missed_detections', action='store_true')
+    parser.add_argument('--ensemble', action='store_true')
+    parser.add_argument('--config_file', default=None)
+    parser.add_argument('--ensemble_alpha', type=float, default=0.5)
 
     args = parser.parse_args()
     return args
@@ -93,7 +101,38 @@ def train(label_path, checkpoint_dir, lr, num_epochs, batch_size, checkpont_save
         if save_epoch % checkpont_save_epoch == 0:
             save_checkpoint(save_epoch, checkpoint_dir, model)
 
-def infer(label_path, checkpoint_path, results_dir, visualize_missed_detections):
+#TODO am I able to batch inputs to the model 
+#instead of running 1 by 1?
+def get_ensemble_data(image_paths, image_size, gan_opt, gan_model, gan_details):
+    ensemble_augment_textures = gan_details['ensemble_augment_textures']
+    ensemble_images = []
+    ensemble_image_indices = []
+
+    transorm = get_test_transform(image_size)
+    
+    for texture in ensemble_augment_textures:
+        latent_path = os.path.join(gan_details['extracted_latent_code_dir'], texture, 'latent_codes.pth')
+        texture_codes = torch.load(latent_path)
+        rand_ind = np.random.choice(texture_codes.shape[0])
+        texture_code = texture_codes[rand_ind:rand_ind+1]
+
+        for i in range(len(image_paths)):
+            image_path = image_paths[i]
+            structure_image = util.load_image(gan_opt, image_path)
+            structure_code, structure_texture = gan_model(structure_image, command="encode")
+            texture_code = util.lerp(structure_texture, texture_code, gan_details['texture_alpha'])
+            augmented_image = gan_model(structure_code, texture_code, command="decode")
+            augmented_image = transforms.ToPILImage()((augmented_image[0].clamp(-1.0, 1.0) + 1.0) * 0.5)
+
+            augmented_image = transorm(augmented_image)
+
+            ensemble_images.append(augmented_image)
+            ensemble_image_indices.append(i)
+
+    return ensemble_images, np.array(ensemble_image_indices)
+
+
+def infer(label_path, checkpoint_path, results_dir, visualize_missed_detections, ensemble, config_file, ensemble_alpna):
     label_dict = util.read_file(label_path)
     img_size = label_dict['img_size']
     num_classes = label_dict['num_classes']
@@ -111,6 +150,14 @@ def infer(label_path, checkpoint_path, results_dir, visualize_missed_detections)
             class_name = label_map[i]
             os.makedirs(os.path.join(visualize_missed_detections_dir, class_name), exist_ok=True)
 
+    if ensemble:
+        torch.set_grad_enabled(False)
+        config = util.read_yaml(config_file)
+        gan_opt, gan_model = util.get_opt_and_model(opt = TestOptions().parse(name_req=False))
+        gan_augment, gan_details = parse_and_validate_gan_details(config, label_map, False)
+        if not gan_augment:
+            raise RuntimeError('gan_augment must be True when ensembling')
+
     total_corr = 0.0
     total = 0.0
     for batch in dataloader:
@@ -118,8 +165,35 @@ def infer(label_path, checkpoint_path, results_dir, visualize_missed_detections)
         images = images.cuda()
         labels = labels.cuda()
 
-        pred = model(images)
-        pred_labels = torch.argmax(pred, dim=1)
+        if not ensemble:
+            pred = model(images)
+            pred_labels = torch.argmax(pred, dim=1)
+        else:
+            ensemble_images, ensemble_image_indices = get_ensemble_data(image_paths, config['img_size'], gan_opt, gan_model, gan_details)
+            ensemble_images = torch.stack(ensemble_images).cuda()
+
+            orig_preds = model(images)
+
+            ensemble_preds = []
+            ensemble_start_index = 0
+            while ensemble_start_index < ensemble_image_indices.shape[0]:
+                ensemble_end_index = np.min([ensemble_start_index + batch_size, ensemble_image_indices.shape[0]])
+                ensemble_preds.append(model(ensemble_images[ensemble_start_index:ensemble_end_index]))
+
+                ensemble_start_index = ensemble_end_index
+
+            ensemble_preds = torch.cat(ensemble_preds)
+
+            preds = []
+            for image_index in range(len(image_paths)):
+                ensemble_inds = np.where(ensemble_image_indices == image_index)
+                ensemble_image_preds = ensemble_preds[ensemble_inds]
+
+                image_preds = orig_preds[image_index]*(1-ensemble_alpna) + torch.mean(ensemble_image_preds, dim=0)*(ensemble_alpna)
+                preds.append(image_preds)
+
+            preds = torch.stack(preds)
+            pred_labels = torch.argmax(preds, dim=1)
 
         total_corr += (pred_labels == labels).sum()
         total += labels.shape[0]
@@ -154,6 +228,9 @@ if __name__ == "__main__":
     batch_size = args.batch_size
     results_dir = args.results_dir
     visualize_missed_detections = args.visualize_missed_detections
+    ensemble = args.ensemble
+    config_file = args.config_file
+    ensemble_alpha = args.ensemble_alpha
 
     if not os.path.exists(label_path):
         raise RuntimeError('Invalid label path')
@@ -170,10 +247,13 @@ if __name__ == "__main__":
             raise RuntimeError('checkpoint_file required for inference')
 
         if results_dir is None:
-            raise RuntimeWarning('results_dir required for inference')
+            raise RuntimeError('results_dir required for inference')
+
+        if (ensemble) and (config_file is None):
+            raise RuntimeError('config_file must be specified if ensemble is True')
 
         os.makedirs(results_dir, exist_ok=True)
 
-        infer(label_path, checkpoint_file, results_dir, visualize_missed_detections)
+        infer(label_path, checkpoint_file, results_dir, visualize_missed_detections, ensemble, config_file, ensemble_alpha)
     else:
         raise RuntimeError("Illegal method found: " + method)

@@ -1,0 +1,23 @@
+input_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/structures/evaluation"
+output_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/eval_data"
+gan_augment: False
+train_test_split: "0:100"
+img_size: 224
+num_classes: 4
+classes: 
+  - label: 0
+    class_name: "forest"
+    class_dirs:
+      - "winter_forest"
+  - label: 1
+    class_name: "mountain"
+    class_dirs:
+      - "fall_mountain"
+  - label: 2
+    class_name: "sea"
+    class_dirs:
+      - "sunset_beach"
+  - label: 3
+    class_name: "desert"
+    class_dirs:
+      - "night_desert"

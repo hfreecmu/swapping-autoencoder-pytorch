@@ -9,8 +9,6 @@ import torchvision.transforms as transforms
 
 import util
 from options import TestOptions
-import models
-from data.base_dataset import get_transform
 
 method_choices = ["build_flickr", "extract_latent"]
 
@@ -22,13 +20,6 @@ def parse_args():
 
     args = parser.parse_args()
     return args
-
-def load_image(opt, path):
-    path = os.path.expanduser(path)
-    img = Image.open(path).convert('RGB')
-    transform = get_transform(opt)
-    tensor = transform(img).unsqueeze(0)
-    return tensor
 
 def parse_train_test_split(train_test_split):
     splits = train_test_split.split(":")
@@ -120,28 +111,6 @@ def get_filenames(input_dir, sub_dirs):
 
     return filenames
 
-def get_opt_and_model():
-    opt = TestOptions().parse(name_req=False)
-    #opt.preprocess = "scale_shortside"
-    opt.preprocess = "resize"
-    opt.load_size = 512
-    opt.crop_size = 512
-    opt.name = 'mountain_pretrained'
-    opt.dataset_mode = "imagefolder"
-    opt.lambda_patch_R1=10.0
-    #just for debug
-    # opt.evaluation_metrics="texture_extract"
-    # opt.result_dir='./results/'
-    # opt.texture_mix_alphas=[1.0]
-    # opt.method='save_all'
-    # opt.latent_mix_alphas=[1.0]
-    # opt.latent_type=None
-    # opt.input_dir='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/latent_textures'
-    # opt.input_structure_image=None
-    model = models.create_model(opt)
-
-    return opt, model
-
 def extract_latent_codes(config_file):
     config = util.read_yaml(config_file)
     classes = config["classes"]
@@ -160,7 +129,7 @@ def extract_latent_codes(config_file):
     if not os.path.exists(latent_input_dir):
         raise RuntimeError('Invalid latent input dir')
 
-    opt, model = get_opt_and_model()
+    opt, model = util.get_opt_and_model(opt = TestOptions().parse(name_req=False))
 
     for dirname in os.listdir(latent_input_dir):
         subdir = os.path.join(latent_input_dir, dirname)
@@ -179,7 +148,7 @@ def extract_latent_codes(config_file):
             image_path = os.path.join(subdir, filename)
 
             print('Processing: ' + image_path)
-            image = load_image(opt, image_path)
+            image = util.load_image(opt, image_path)
         
             #TODO do I need to do this once or every time?
             # Actually do I need this at all?
@@ -212,7 +181,7 @@ def create_flickr_data(config_file):
     gan_augment, gan_details = parse_and_validate_gan_details(config, label_map, False)
 
     if gan_augment:
-        opt, model = get_opt_and_model()
+        opt, model = util.get_opt_and_model(opt = TestOptions().parse(name_req=False))
 
     train_dir = os.path.join(output_dir, 'train')
     test_dir = os.path.join(output_dir, "test")
@@ -252,7 +221,7 @@ def create_flickr_data(config_file):
 
             #only augment training
             if (i in train_inds) and (gan_augment) and (gan_details['class_augment_details'].get(class_name) is not None):
-                structure_image = load_image(opt, dest_path)
+                structure_image = util.load_image(opt, dest_path)
                 structure_code, structure_texture = model(structure_image, command="encode")
 
                 textures = gan_details['class_augment_details'][class_name]["textures"]

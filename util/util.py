@@ -18,6 +18,37 @@ import cv2
 import json
 import yaml
 
+import models
+from data.base_dataset import get_transform
+
+def get_opt_and_model(opt):
+    #opt.preprocess = "scale_shortside"
+    opt.preprocess = "resize"
+    opt.load_size = 512
+    opt.crop_size = 512
+    opt.name = 'mountain_pretrained'
+    opt.dataset_mode = "imagefolder"
+    opt.lambda_patch_R1=10.0
+    #just for debug
+    # opt.evaluation_metrics="texture_extract"
+    # opt.result_dir='./results/'
+    # opt.texture_mix_alphas=[1.0]
+    # opt.method='save_all'
+    # opt.latent_mix_alphas=[1.0]
+    # opt.latent_type=None
+    # opt.input_dir='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/latent_textures'
+    # opt.input_structure_image=None
+    model = models.create_model(opt)
+
+    return opt, model
+
+def load_image(opt, path):
+    path = os.path.expanduser(path)
+    img = Image.open(path).convert('RGB')
+    transform = get_transform(opt)
+    tensor = transform(img).unsqueeze(0)
+    return tensor
+
 def read_file(dict_path):
     with open(dict_path, 'rb') as f:
         dictionary = pickle.load(f)
@@ -45,6 +76,24 @@ def jpg_to_png(input_dir):
         dest_path = file_path.replace('.jpeg', '.png')
         cv2.imwrite(dest_path, image)
         os.remove(file_path)
+
+def name_modify(input_dir, name):
+    if not os.path.exists(input_dir):
+        raise RuntimeError('Illegal input dir')
+    
+    for filename in os.listdir(input_dir):
+        if not filename.endswith('.png'):
+            continue
+
+        if filename.startswith(name):
+            continue
+
+        file_path = os.path.join(input_dir, filename)
+        image = cv2.imread(file_path)
+        dest_path = os.path.join(input_dir, name + '_' + filename)
+        cv2.imwrite(dest_path, image)
+        os.remove(file_path)
+
 
 def read_yaml(config_file):
     with open(config_file) as f:

@@ -40,3 +40,4 @@ gan_details:
     sea: 
       textures: ['blue_sky', 'night', 'sunset']
       num_augment: 1
+  ensemble_augment_textures: ['blue_sky', 'night', 'sunset']

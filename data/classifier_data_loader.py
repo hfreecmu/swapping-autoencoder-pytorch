@@ -2,6 +2,14 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 import PIL.Image as Image
 
+def get_test_transform(image_size):
+    return transforms.Compose([
+            transforms.Resize((image_size, image_size), Image.BICUBIC),
+            transforms.ToTensor(),
+            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ])
+
 class ClassifierDataSet(Dataset):
     """Load images under folders"""
     def __init__(self, labels, transform, return_path):
@@ -33,12 +41,7 @@ def get_data_loader(labels, is_train, image_size=224, batch_size=16, return_path
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ])
     else:
-        transform = transforms.Compose([
-            transforms.Resize((image_size, image_size), Image.BICUBIC),
-            transforms.ToTensor(),
-            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-        ])
+        transform = get_test_transform(image_size)
 
     dataset = ClassifierDataSet(labels, transform, return_path=return_path)
     
