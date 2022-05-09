@@ -1,0 +1,43 @@
+input_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/flickr_data/structures/google_highres"
+output_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/google_highres_data_mult_gan_v1"
+gan_augment: True
+train_test_split: "80:20"
+img_size: 224
+num_classes: 4
+classes: 
+  - label: 0
+    class_name: "forest"
+    class_dirs:
+      - "forest"
+  - label: 1
+    class_name: "mountain"
+    class_dirs:
+      - "mountain"
+
+  - label: 2
+    class_name: "sea"
+    class_dirs:
+      - "sea"
+
+  - label: 3
+    class_name: "desert"
+    class_dirs:
+      - "desert"
+gan_details:
+  latent_input_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/flickr_data/latent_textures"
+  extracted_latent_code_dir: '/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/latent_textures'
+  texture_alpha: 0.9
+  class_augment_details:
+    forest: 
+      textures: ['snow', 'autumn_trees', 'night', 'sunset']
+      num_augment: 1
+    desert: 
+      textures: ['snow', 'autumn_trees', 'night', 'sunset']
+      num_augment: 1
+    mountain: 
+      textures: ['snow', 'autumn_trees', 'night', 'sunset']
+      num_augment: 1
+    sea: 
+      textures: ['snow', 'autumn_trees', 'night', 'sunset']
+      num_augment: 1
+  ensemble_augment_textures: ['snow', 'autumn_trees', 'night', 'sunset']

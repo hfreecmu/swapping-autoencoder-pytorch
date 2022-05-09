@@ -132,7 +132,7 @@ def get_ensemble_data(image_paths, image_size, gan_opt, gan_model, gan_details):
     return ensemble_images, np.array(ensemble_image_indices)
 
 
-def infer(label_path, checkpoint_path, results_dir, visualize_missed_detections, ensemble, config_file, ensemble_alpna):
+def infer(label_path, checkpoint_path, results_dir, visualize_missed_detections, ensemble, config_file, ensemble_alpha):
     label_dict = util.read_file(label_path)
     img_size = label_dict['img_size']
     num_classes = label_dict['num_classes']
@@ -189,7 +189,7 @@ def infer(label_path, checkpoint_path, results_dir, visualize_missed_detections,
                 ensemble_inds = np.where(ensemble_image_indices == image_index)
                 ensemble_image_preds = ensemble_preds[ensemble_inds]
 
-                image_preds = orig_preds[image_index]*(1-ensemble_alpna) + torch.mean(ensemble_image_preds, dim=0)*(ensemble_alpna)
+                image_preds = orig_preds[image_index]*(1-ensemble_alpha) + torch.mean(ensemble_image_preds, dim=0)*(ensemble_alpha)
                 preds.append(image_preds)
 
             preds = torch.stack(preds)
