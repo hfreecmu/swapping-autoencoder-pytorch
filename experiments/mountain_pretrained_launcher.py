@@ -71,15 +71,17 @@ class Launcher(TmuxLauncher):
                 batch_size=1,
                 dataroot=".",  # dataroot is ignored.
                 result_dir="./results/",
-                preprocess="scale_shortside",
+                #preprocess="scale_shortside",
+                preprocess="resize",
                 load_size=512,
                 evaluation_metrics="simple_swapping",
                 # Specify the two images here.
                 #input_structure_image="./testphotos/mountain/fig12/structure/AdobeStock_104191871.jpeg",
                 #input_texture_image="./testphotos/mountain/fig12/style/AdobeStock_312564332.jpeg",
-                input_structure_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/dep/photos_mini/forest/forest_mix/000000.jpg',
-                input_texture_image='/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/dep/photos_mini/mountains/winter_mountains/000002.jpg',
-                texture_mix_alpha='0.0 0.25 0.5 0.75 1.0',
+                input_structure_image='/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/flickr_data/structures/google_highres/forest/forest1.png',
+                input_texture_image='/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/flickr_data/latent_textures/snow/snow_000031.png',
+                #texture_mix_alpha='0.0 0.25 0.5 0.75 1.0',
+                texture_mix_alpha='0.0 0.25 0.5 0.75 0.9 1.0',
             ),
 
             # Extract all latent codes from directory

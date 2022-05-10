@@ -1,4 +1,4 @@
-input_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/final_project/data/flickr/structures/evaluation"
+input_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/flickr_data/structures/evaluation"
 output_dir: "/home/frc-ag-3/harry_ws/visual_synthesis/repos/swapping-autoencoder-pytorch/datasets/eval_data"
 gan_augment: False
 train_test_split: "0:100"

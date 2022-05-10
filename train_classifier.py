@@ -11,10 +11,13 @@ import numpy as np
 import util
 from data.classifier_data_loader import get_data_loader, get_test_transform
 from options import TestOptions
+from util.diff_augment import DiffAugment
+diff_aug_policy = 'color,translation,cutout'
 
 from create_training_data import parse_and_validate_gan_details
 
 methods = ['train', 'infer']
+augment_types = ['simple', 'deluxe']
 "TODO: move these all to config"
 def parse_args():
     """Parse input arguments."""
@@ -32,6 +35,8 @@ def parse_args():
     parser.add_argument('--ensemble', action='store_true')
     parser.add_argument('--config_file', default=None)
     parser.add_argument('--ensemble_alpha', type=float, default=0.5)
+    parser.add_argument('--augment_type', default='simple', choices=augment_types)
+    parser.add_argument('--use_diffaug', action='store_true')
 
     args = parser.parse_args()
     return args
@@ -61,13 +66,13 @@ def save_checkpoint(epoch, checkpoint_dir, model):
     print('Saving checkpoint: ' + path)
     torch.save(model.state_dict(), path)
 
-def train(label_path, checkpoint_dir, lr, num_epochs, batch_size, checkpont_save_epoch):
+def train(label_path, checkpoint_dir, lr, num_epochs, batch_size, augment_type, use_diffaug, checkpont_save_epoch):
     label_dict = util.read_file(label_path)
     img_size = label_dict['img_size']
     num_classes = label_dict['num_classes']
 
     model = build_model(num_classes)
-    dataloader = get_data_loader(label_dict['labels'], True, image_size=img_size, batch_size=batch_size)
+    dataloader = get_data_loader(label_dict['labels'], True, image_size=img_size, batch_size=batch_size, augment_type=augment_type)
     optimizer = optim.Adam(model.parameters(), lr)
     
     ce_loss = nn.CrossEntropyLoss()
@@ -77,6 +82,10 @@ def train(label_path, checkpoint_dir, lr, num_epochs, batch_size, checkpont_save
         losses = 0
         for batch in dataloader:
             images, labels = batch
+
+            if use_diffaug:
+               images = DiffAugment(images, policy=diff_aug_policy)
+
             images = images.cuda()
             labels = labels.cuda()
 
@@ -231,6 +240,8 @@ if __name__ == "__main__":
     ensemble = args.ensemble
     config_file = args.config_file
     ensemble_alpha = args.ensemble_alpha
+    augment_type = args.augment_type
+    use_diffaug = args.use_diffaug
 
     if not os.path.exists(label_path):
         raise RuntimeError('Invalid label path')
@@ -241,7 +252,7 @@ if __name__ == "__main__":
 
         os.makedirs(checkpoint_dir, exist_ok=True)
 
-        train(label_path, checkpoint_dir, lr, num_epochs, batch_size, checkpont_save_epoch)
+        train(label_path, checkpoint_dir, lr, num_epochs, batch_size, augment_type, use_diffaug, checkpont_save_epoch)
     elif method == 'infer':
         if checkpoint_file is None:
             raise RuntimeError('checkpoint_file required for inference')
