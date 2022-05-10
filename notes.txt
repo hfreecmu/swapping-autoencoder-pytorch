@@ -1,0 +1,34 @@
+Other possible datasets:
+https://images.cv/dataset/forest-image-classification-dataset
+
+https://www.kaggle.com/datasets/arnaud58/landscape-pictures?resource=download
+
+util.py has command to convert jpg/jpeg to png and add name prefix to image (jpg_to_png and name_modify)
+
+Commands:
+To extract latent codes:
+python3 create_training_data.py --config_file ./configs/flickr_gan_config.yml --method extract_latent
+
+To create training data:  
+python3 create_training_data.py --config_file ./configs/flickr_gan_config.yml --method build_flickr
+
+To train: 
+python3 train_classifier.py --method train --label_path ./datasets/google_highres_data_v0/train_labels.pkl --checkpoint_dir ./checkpoints/classifier/google_highres_v0 --num_epochs 150
+
+To infer: 
+python3 train_classifier.py --method infer --label_path ./datasets/google_highres_data_v0/test_labels.pkl --checkpoint_file ./checkpoints/classifier/google_highres_v0/epoch_90.pkl --results_dir results/classifier/google_highres_v0 --visualize_missed_detections
+
+
+PCA vs TSNE:
+https://towardsdatascience.com/visualizing-feature-vectors-embeddings-using-pca-and-t-sne-ef157cea3a42
+
+#TODO
+random/different texture_alpha
+random/interpolate style texture codes
+
+
+The proposed research plan sounds great, and if time is limited, it might be helpful to target few-shot settings where the 
+labeled data is few (hence the training time is shorter, and the need for data augmentation could be even more urgent). 
+It might be helpful to contrast GAN-based augmentation techniques with traditional data augmentation approaches (randAug, Cutout, etc.). 
+If Swapping Autoencoder is time-consuming to re-train, you can use the Landscape Mixer feature in Photoshop. There might be a way to 
+use the command line interface to call Photoshop API. Contact Sheng-Yu for more details.

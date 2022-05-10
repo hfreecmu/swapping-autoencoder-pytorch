@@ -148,3 +148,6 @@ datasets/
 scripts/flickr_jsons/*.json
 *_creds.json
 !scripts/flickr_jsons/info.txt
+
+#notes
+!notes.txt
